@@ -18,7 +18,7 @@
 
 
 #include <IOKit/IOKitLib.h>
-#include <IOKit/ps/IOPowerSources.h>
+//#include <IOKit/ps/IOPowerSources.h> //not exist in ios
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/resource.h>
@@ -105,20 +105,25 @@ void xmrig::Platform::setThreadPriority(int priority)
 
 bool xmrig::Platform::isOnBatteryPower()
 {
-    return IOPSGetTimeRemainingEstimate() != kIOPSTimeRemainingUnlimited;
+    //return IOPSGetTimeRemainingEstimate() != kIOPSTimeRemainingUnlimited;
+    // TODO: implement this properly
+    // related to pause-on-battery option
+    return false;
 }
 
 
 uint64_t xmrig::Platform::idleTime()
 {
+    // TODO: understand what is idleTime and implement it
+    // related to pause-on-active option. the value does not matter if not using that option.
     uint64_t idle_time  = 0;
-    const auto service  = IOServiceGetMatchingService(kIOMasterPortDefault, IOServiceMatching("IOHIDSystem"));
-    const auto property = IORegistryEntryCreateCFProperty(service, CFSTR("HIDIdleTime"), kCFAllocatorDefault, 0);
+    //const auto service  = IOServiceGetMatchingService(kIOMasterPortDefault, IOServiceMatching("IOHIDSystem")); //kIOMasterPortDefault does not exist on ios
+    //const auto property = IORegistryEntryCreateCFProperty(service, CFSTR("HIDIdleTime"), kCFAllocatorDefault, 0);
 
-    CFNumberGetValue((CFNumberRef)property, kCFNumberSInt64Type, &idle_time);
+    //CFNumberGetValue((CFNumberRef)property, kCFNumberSInt64Type, &idle_time); // CFNumberRef, kCFNumberSInt64Type not available on ios
 
-    CFRelease(property);
-    IOObjectRelease(service);
+    //CFRelease(property);
+    //IOObjectRelease(service);
 
     return idle_time / 1000000U;
 }

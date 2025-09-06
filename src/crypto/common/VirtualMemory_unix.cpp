@@ -27,6 +27,9 @@
 #include <fstream>
 #include <sys/mman.h>
 
+#include <iostream>
+#include <cstdio>
+
 
 #ifdef XMRIG_OS_APPLE
 #   include <libkern/OSCacheControl.h>
@@ -106,12 +109,13 @@ bool xmrig::VirtualMemory::isOneGbPagesAvailable()
 
 bool xmrig::VirtualMemory::protectRW(void *p, size_t size)
 {
-#   if defined(XMRIG_OS_APPLE) && defined(XMRIG_ARM)
-    pthread_jit_write_protect_np(false);
-    return true;
-#   else
+    // this is macos JIT safety feature, not available on ios. Remove it for jailbroken/JIT-enabled devices and use the standard mprotect instead. same for other calls
+//#   if defined(XMRIG_OS_APPLE) && defined(XMRIG_ARM)
+    //pthread_jit_write_protect_np(false); 
+//    return true;
+//#   else
     return mprotect(p, size, PROT_READ | PROT_WRITE) == 0;
-#   endif
+//#   endif
 }
 
 
@@ -125,11 +129,11 @@ bool xmrig::VirtualMemory::protectRX(void *p, size_t size)
 {
     bool result = true;
 
-#   if defined(XMRIG_OS_APPLE) && defined(XMRIG_ARM)
-    pthread_jit_write_protect_np(true);
-#   else
+//#   if defined(XMRIG_OS_APPLE) && defined(XMRIG_ARM)
+    //pthread_jit_write_protect_np(true);
+//#   else
     result = (mprotect(p, size, PROT_READ | PROT_EXEC) == 0);
-#   endif
+//#   endif
 
 #   if defined(XMRIG_ARM)
     flushInstructionCache(p, size);
@@ -142,9 +146,11 @@ bool xmrig::VirtualMemory::protectRX(void *p, size_t size)
 void *xmrig::VirtualMemory::allocateExecutableMemory(size_t size, bool hugePages)
 {
 #   if defined(XMRIG_OS_APPLE)
-    void *mem = mmap(0, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON | MEXTRA, -1, 0);
+    //std::cout<<"trying to allocate JIT memory, size = "<<size<<std::endl;
+    void *mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0); //removed MEXTRA flag. it is defined as MAP_JIT, but that does not exist in ios
+
 #   ifdef XMRIG_ARM
-    pthread_jit_write_protect_np(false);
+    //pthread_jit_write_protect_np(false);
 #   endif
 #   elif defined(XMRIG_OS_FREEBSD)
     void *mem = nullptr;
@@ -171,6 +177,8 @@ void *xmrig::VirtualMemory::allocateExecutableMemory(size_t size, bool hugePages
 
 #   endif
 
+    //perror("mmap");
+    //std::cout<<"mem = "<<mem<<std::endl;
     return mem == MAP_FAILED ? nullptr : mem;
 }
 
@@ -178,13 +186,16 @@ void *xmrig::VirtualMemory::allocateExecutableMemory(size_t size, bool hugePages
 void *xmrig::VirtualMemory::allocateLargePagesMemory(size_t size)
 {
 #   if defined(XMRIG_OS_APPLE)
-    void *mem = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
+    //std::cout<<"trying to allocate large page memory, size = "<<size<<std::endl;
+    void *mem = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0); //removed VM_FLAGS_SUPERPAGE_SIZE_2MB which causes invalid argument on iOS
 #   elif defined(XMRIG_OS_FREEBSD)
     void *mem = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_ALIGNED_SUPER | MAP_PREFAULT_READ, -1, 0);
 #   else
     void *mem = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | MAP_POPULATE | hugePagesFlag(hugePageSize()), 0, 0);
 #   endif
 
+    //perror("mmap");
+    //std::cout<<"mem = "<<mem<<std::endl;
     return mem == MAP_FAILED ? nullptr : mem;
 }
 

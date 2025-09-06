@@ -35,6 +35,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "crypto/randomx/superscalar.hpp"
 #include "crypto/randomx/virtual_memory.hpp"
 
+#include <iostream>
+#include <sys/mman.h>
+
 static bool hugePagesJIT = false;
 static int optimizedDatasetInit = -1;
 
@@ -171,6 +174,10 @@ void JitCompilerA64::generateProgram(Program& program, ProgramConfiguration& con
 #	ifndef XMRIG_OS_APPLE
 	xmrig::VirtualMemory::flushInstructionCache(reinterpret_cast<char*>(code + MainLoopBegin), codePos - MainLoopBegin);
 #	endif
+#	ifdef XMRIG_SECURE_JIT
+	enableExecution();
+	//std::cout<<"jit memory is now executable"<<std::endl;
+#	endif
 }
 
 void JitCompilerA64::generateProgramLight(Program& program, ProgramConfiguration& config, uint32_t datasetOffset)
@@ -232,9 +239,15 @@ void JitCompilerA64::generateProgramLight(Program& program, ProgramConfiguration
 	emit32(ARMV8A::ADD_IMM_LO | 2 | (2 << 5) | (imm_lo << 10), code, codePos);
 	emit32(ARMV8A::ADD_IMM_HI | 2 | (2 << 5) | (imm_hi << 10), code, codePos);
 
+#	ifdef XMRIG_SECURE_JIT
+	enableExecution();
+	//std::cout<<"jit memory is now executable"<<std::endl;
+#	endif
+
 #	ifndef XMRIG_OS_APPLE
 	xmrig::VirtualMemory::flushInstructionCache(reinterpret_cast<char*>(code + MainLoopBegin), codePos - MainLoopBegin);
 #	endif
+
 }
 
 template<size_t N>
@@ -361,6 +374,10 @@ void JitCompilerA64::generateSuperscalarHash(SuperscalarProgram(&programs)[N])
 
 #	ifndef XMRIG_OS_APPLE
 	xmrig::VirtualMemory::flushInstructionCache(reinterpret_cast<char*>(code + CodeSize), codePos - MainLoopBegin);
+#	endif
+#	ifdef XMRIG_SECURE_JIT
+	enableExecution();
+	//std::cout<<"jit memory is now executable"<<std::endl;
 #	endif
 }
 
